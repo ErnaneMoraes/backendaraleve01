@@ -4,6 +4,8 @@ var { connectDB, sql } = require("./db"); // Agora importando corretamente
 
 connectDB();
 
+const PORT = process.env.PORT || 8080; // Use a variável de ambiente PORT do Azure ou 8080 localmente
+
 meuAPP.get("/", function (req, res) {
   res.send("Olá mundo");
 });
@@ -19,6 +21,6 @@ meuAPP.get("/usuarios", async (req, res) => {
   }
 });
 
-meuAPP.listen(8080, () => {
-  console.log("Servidor rodando na porta 8080");
+meuAPP.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
