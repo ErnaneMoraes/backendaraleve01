@@ -1,16 +1,16 @@
-var express = require("express");
-var meuAPP = express();
-var { connectDB, sql } = require("./db"); // Agora importando corretamente
+require('dotenv').config(); // Carrega as variáveis do .env
+
+const express = require('express');
+const meuAPP = express();
+const { connectDB, sql } = require('./db'); // Importa a função de conexão
+const PORT = process.env.PORT || 8080; // Defina a porta corretamente
 
 connectDB();
-
-const PORT = process.env.PORT || 8080; // Use a variável de ambiente PORT do Azure ou 8080 localmente
 
 meuAPP.get("/", function (req, res) {
   res.send("Olá mundo");
 });
 
-// Rota para consultar usuários
 meuAPP.get("/usuarios", async (req, res) => {
   try {
     const result = await new sql.Request().query("SELECT * FROM tb_usuario");
