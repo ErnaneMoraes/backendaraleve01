@@ -1,25 +1,24 @@
-require("dotenv").config();
-const sql = require("mssql");
+const mysql = require('mysql2/promise');
+require('dotenv').config();
 
-const config = {
+const pool = mysql.createPool({
+  host: process.env.DB_SERVER,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  server: process.env.DB_SERVER,
   database: process.env.DB_DATABASE,
-  options: {
-    encrypt: true, // Obrigatório para Azure
-    enableArithAbort: true,
-  },
-};
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
 
 async function connectDB() {
   try {
-    await sql.connect(config);
-    console.log("Conectado ao banco de dados com sucesso!");
+    const connection = await pool.getConnection();
+    console.log("Conectado ao MySQL com sucesso!");
+    connection.release();
   } catch (err) {
-    console.error("Erro ao conectar no banco de dados:", err);
+    console.error("Erro ao conectar ao MySQL:", err);
   }
 }
 
-module.exports = { connectDB, sql };
-
+module.exports = { connectDB, pool };
