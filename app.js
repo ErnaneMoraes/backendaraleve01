@@ -86,7 +86,7 @@ app.get("/usuarios", verifyJWT, async (req, res) => {
 // POST usuário
 app.post("/usuarios", verifyJWT, async (req, res) => {
   const { nome, login, senha, nivelAcesso } = req.body;
-  const Usuario = require('./src/models/usuario');
+  const Usuario = require('./src/models/Usuario');
   const user = new Usuario();
   const resultado = await user.criarUsuario(nome, login, senha, nivelAcesso);
 
@@ -110,7 +110,7 @@ app.post("/usuarios", verifyJWT, async (req, res) => {
     return res.status(400).json({ sucesso: false, mensagem: "Preencha todos os campos corretamente." });
   }
 
-  const Usuario = require('./src/models/usuario');
+  const Usuario = require('./src/models/Usuario');
   const user = new Usuario();
 
   try {
@@ -130,7 +130,7 @@ app.post("/usuarios", verifyJWT, async (req, res) => {
 // DELETE usuário
 app.delete("/usuarios/:id", verifyJWT, async (req, res) => {
   const id = req.params.id;
-  const Usuario = require('./src/models/usuario');
+  const Usuario = require('./src/models/Usuario');
   const user = new Usuario();
 
   try {
