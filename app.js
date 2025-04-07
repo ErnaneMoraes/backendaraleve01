@@ -18,22 +18,20 @@ const PORT = process.env.PORT || 8080;
 // Conexão com o banco de dados
 connectDB();
 
+// Middleware CORS manual (reforçado para Cloud Run)
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*"); // ou "https://sistemaaraleve.shop"
+  res.setHeader("Access-Control-Allow-Origin", "*"); // OU seu domínio exato
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-access-token");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+
+  // Trata requisição preflight diretamente
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
   next();
 });
-
-// CORS — configuração única e correta
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token'],
-  credentials: true
-}));
-
-app.options('*', cors()); // Suporte a preflight
 
 // Middlewares globais
 app.use(bodyParser.json());
