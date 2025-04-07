@@ -1,91 +1,77 @@
 const express = require('express');
 const cors = require('cors');
-const meuAPP = express();
-const { connectDB, pool } = require('./database');
-const { router: loginRouter, verifyJWT } = require('./src/models/login');
-const statusRouter = require('./src/models/status'); 
-const estoqueRoutes = require('./estoqueRoutes');
-const itemRoutes = require('./itemRoutes'); 
-const usuarioRoutes = require('./usuarioRoutes');
 const bodyParser = require('body-parser');
-
 const path = require('path');
-
 require('dotenv').config();
 
+const { connectDB, pool } = require('./database');
+const { router: loginRouter, verifyJWT, router: verifyTokenRouter } = require('./src/models/login');
+const statusRouter = require('./src/models/status');
+const usuarioRoutes = require('./usuarioRoutes');
+const pedidoRoutes = require('./pedidoRoutes');
+const estoqueRoutes = require('./estoqueRoutes');
+const itemRoutes = require('./itemRoutes');
+
+const app = express();
 const PORT = process.env.PORT || 8080;
 
-meuAPP.use(cors()); // Adicionado para permitir requisições do frontend
-meuAPP.use(express.json());
-meuAPP.use(express.urlencoded({ extended: true }));
-
+// Conexão com o banco de dados
 connectDB();
 
-//Alteração Luan
+// CORS — configuração única e correta
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token'],
+  credentials: true
+}));
 
-// Middlewares
-meuAPP.use(cors());
-meuAPP.use(bodyParser.json());
+app.options('*', cors()); // Suporte a preflight
 
-// Rotas
-meuAPP.use('/api', usuarioRoutes);
+// Middlewares globais
+app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-const pedidoRoutes = require('./pedidoRoutes');
+// Rotas protegidas e públicas
+app.use('/api', usuarioRoutes);
+app.use('/pedidos', pedidoRoutes);
+app.use('/estoque', estoqueRoutes);
+app.use('/api/itens', itemRoutes);
+app.use('/api/estoque', estoqueRoutes);
 
-// Middlewares
-meuAPP.use(cors());
-meuAPP.use(bodyParser.json());
+// Rota protegida para o sistema (acesso a arquivos estáticos)
+app.use('/sistema', verifyJWT, express.static(path.join(__dirname, 'sistema_aralev-master')));
 
-// Rotas
-meuAPP.use('/pedidos', pedidoRoutes);
-
-
-// Middlewares
-meuAPP.use(cors());
-meuAPP.use(bodyParser.json());
-
-meuAPP.use('/estoque', estoqueRoutes);
-
-
-
-meuAPP.use('/sistema', verifyJWT, express.static(path.join(__dirname, 'sistema_aralev-master')));
-
-// Rota para buscar usuários
-meuAPP.get("/usuarios", verifyJWT, async (req, res) => {
-//meuAPP.get("/usuarios", async (req, res) => {
+// Rotas diretas
+app.get("/usuarios", verifyJWT, async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT * FROM tb_usuario");
     res.json(rows);
   } catch (err) {
-    console.error("Erro ao buscar usuário:", err);
-    res.status(500).send("Erro ao buscar usuário");
+    console.error("Erro ao buscar usuários:", err);
+    res.status(500).send("Erro ao buscar usuários");
   }
 });
 
-meuAPP.post("/usuarios", verifyJWT, async (req, res) => {
-//meuAPP.post("/usuarios", async (req, res) => {
+app.post("/usuarios", verifyJWT, async (req, res) => {
   const { nome, login, senha, nivelAcesso } = req.body;
   const Usuario = require('./src/models/usuario');
   const user = new Usuario();
   const resultado = await user.criarUsuario(nome, login, senha, nivelAcesso);
 
   if (resultado.erro) {
-    // Se o erro for login duplicado
     if (resultado.erro === "Login já está em uso") {
       return res.status(409).json({ mensagem: resultado.erro });
     }
-
-    // Outros erros
     return res.status(500).json({ mensagem: resultado.erro, detalhe: resultado.detalhe });
   }
 
-  // Sucesso
   res.status(201).json({ sucesso: true, id: resultado.id });
 });
 
-meuAPP.delete("/usuarios/:id", verifyJWT, async (req, res) => {
+app.delete("/usuarios/:id", verifyJWT, async (req, res) => {
   const id = req.params.id;
-
   const Usuario = require('./src/models/usuario');
   const user = new Usuario();
 
@@ -103,7 +89,7 @@ meuAPP.delete("/usuarios/:id", verifyJWT, async (req, res) => {
   }
 });
 
-meuAPP.put("/usuarios/:id", async (req, res) => {
+app.put("/usuarios/:id", verifyJWT, async (req, res) => {
   const id = req.params.id;
   const { nome, login, senha, nivelAcesso } = req.body;
 
@@ -128,47 +114,30 @@ meuAPP.put("/usuarios/:id", async (req, res) => {
   }
 });
 
-
-
-
-
-
-meuAPP.get("/inicio", verifyJWT, (req, res) => {
-  res.redirect("http://127.0.0.1:5500/sistema_aralev-master/inicio.html");
-});
-
-const { router: verifyTokenRouter } = require("./src/models/login");
-meuAPP.use(verifyTokenRouter);
-
-
-// Rota para descrição da tabela
-meuAPP.get("/desc", async (req, res) => {
+app.get("/desc", async (req, res) => {
   try {
     const [rows] = await pool.query("DESCRIBE tb_usuario;");
     res.json(rows);
   } catch (err) {
-    console.error("Erro ao buscar usuário:", err);
-    res.status(500).send("Erro ao buscar usuário");
+    console.error("Erro ao buscar descrição da tabela:", err);
+    res.status(500).send("Erro ao buscar descrição da tabela");
   }
 });
 
-// Usando o router de login para a rota /login
-meuAPP.use('/login', loginRouter); 
-
-
-meuAPP.use('/logout', loginRouter); 
-
-meuAPP.use(statusRouter); 
-
-meuAPP.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT} http://localhost:${PORT}/`);
+// Redirecionamento local para testes
+app.get("/inicio", verifyJWT, (req, res) => {
+  res.redirect("http://127.0.0.1:5500/sistema_aralev-master/inicio.html");
 });
 
+// Autenticação
+app.use('/login', loginRouter);
+app.use('/logout', loginRouter);
+app.use(verifyTokenRouter);
 
-meuAPP.use(cors());
-meuAPP.use(bodyParser.json());
+// Status da API
+app.use(statusRouter);
 
-// Rotas
-meuAPP.use('/api/itens', itemRoutes); // Rotas para itens
-meuAPP.use('/api/estoque', estoqueRoutes); // Suas rotas existentes
-
+// Inicia o servidor
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT} http://localhost:${PORT}/`);
+});
