@@ -85,19 +85,29 @@ app.get("/usuarios", verifyJWT, async (req, res) => {
 
 // POST usuário
 app.post("/usuarios", verifyJWT, async (req, res) => {
-  const { nome, login, senha, nivelAcesso } = req.body;
-  const Usuario = require('./src/models/Usuario');
-  const user = new Usuario();
-  const resultado = await user.criarUsuario(nome, login, senha, nivelAcesso);
+  try {
+    const { nome, login, senha, nivelAcesso } = req.body;
+    const Usuario = require('./src/models/Usuario');
+    const user = new Usuario();
+    const resultado = await user.criarUsuario(nome, login, senha, nivelAcesso);
 
-  if (resultado.erro) {
-    if (resultado.erro === "Login já está em uso") {
-      return res.status(409).json({ mensagem: resultado.erro });
+    if (!resultado) {
+      return res.status(500).json({ mensagem: "Erro ao criar usuário", detalhe: "Resultado indefinido" });
     }
-    return res.status(500).json({ mensagem: resultado.erro, detalhe: resultado.detalhe });
-  }
 
-  res.status(201).json({ sucesso: true, id: resultado.id });
+    if (resultado.erro) {
+      if (resultado.erro === "Login já está em uso") {
+        return res.status(409).json({ mensagem: resultado.erro });
+      }
+      return res.status(500).json({ mensagem: resultado.erro, detalhe: resultado.detalhe });
+    }
+
+    res.status(201).json({ sucesso: true, id: resultado.id });
+
+  } catch (err) {
+    console.error("Erro ao criar usuário:", err);
+    res.status(500).json({ mensagem: "Erro ao criar usuário", detalhe: err.message });
+  }
 });
 
 // PUT usuário

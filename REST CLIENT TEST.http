@@ -3,7 +3,7 @@ POST http://localhost:8080/login
 Content-Type: application/json
 
 {
-    "login": "ernane.moraes",
+    "login": "ernane",
     "senha": "Unileste"
 }
 
@@ -21,4 +21,16 @@ x-access-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6MSwiaWF0IjoxNzQ
   "nome": "Ernane",
   "login": "ernane.moraes",
   "nivelAcesso": 1
+}
+
+### CRIAR USUARIo
+POST http://localhost:8080/usuarios
+Content-Type: application/json
+x-access-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6MSwiaWF0IjoxNzQ0MDU0MjU1LCJleHAiOjE3NDQwOTc0NTV9.1yM7tXj2--zAoh2MmVcdNeZ5DqqOVKU3DH7LeX7Lz2I
+
+{
+  "nome": "João Silva",
+  "login": "joao.silva",
+  "senha": "123456",
+  "nivelAcesso": "1"
 }

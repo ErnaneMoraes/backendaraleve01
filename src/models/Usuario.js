@@ -11,23 +11,31 @@ class Usuario {
     }
 
     async criarUsuario(nome, login, senha, nivelAcesso) {
-        try {
-            console.log("Criando usuário com:", nome, login, senha, nivelAcesso);
-            const [rows] = await pool.execute('SELECT * FROM tb_usuario WHERE LOGIN = ?', [login]);
-            console.log("Resultado do UPDATE:", resultado);
-            if (rows.length > 0) {
-                return { erro: "Login já está em uso" };
-            }
-
-            const { salt, hash } = hashPassword(senha);
-            const query = 'INSERT INTO tb_usuario (NOME, LOGIN, SENHA, SALT, NIVEL_ACESSO) VALUES (?, ?, ?, ?, ?)';
-            const [results] = await pool.execute(query, [nome, login, hash, salt, nivelAcesso]);
-            console.log("Resultado do UPDATE:", resultado);
-            return { sucesso: true, id: results.insertId };
-        } catch (err) {
-            return { erro: "Erro ao criar usuário", detalhe: err.message };
-        }
-    }
+      try {
+          console.log("Criando usuário com:", nome, login, senha, nivelAcesso);
+          const [rows] = await pool.execute('SELECT * FROM tb_usuario WHERE LOGIN = ?', [login]);
+  
+          // Esse console.log abaixo está errado e deve ser removido:
+          // console.log("Resultado do UPDATE:", resultado);
+          
+          if (rows.length > 0) {
+              return { erro: "Login já está em uso" };
+          }
+  
+          const { salt, hash } = hashPassword(senha);
+          const query = 'INSERT INTO tb_usuario (NOME, LOGIN, SENHA, SALT, NIVEL_ACESSO) VALUES (?, ?, ?, ?, ?)';
+          const [results] = await pool.execute(query, [nome, login, hash, salt, nivelAcesso]);
+  
+          // Aqui também:
+          // console.log("Resultado do UPDATE:", resultado);
+  
+          console.log("Usuário criado com sucesso, ID:", results.insertId);
+          return { sucesso: true, id: results.insertId };
+      } catch (err) {
+          return { erro: "Erro ao criar usuário", detalhe: err.message };
+      }
+  }
+  
 
     async excluirUsuario(id) {
         try {
