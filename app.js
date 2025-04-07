@@ -101,7 +101,8 @@ app.post("/usuarios", verifyJWT, async (req, res) => {
 });
 
 // PUT usuário
-app.put("/usuarios/:id", cors(corsOptions), verifyJWT, async (req, res) => {
+//app.put("/usuarios/:id", cors(corsOptions), verifyJWT, async (req, res) => {
+  app.put("/usuarios/:id", cors(corsOptions), async (req, res) => {
   const id = req.params.id;
   const { nome, login, senha, nivelAcesso } = req.body;
 
