@@ -5,7 +5,11 @@ const path = require('path');
 require('dotenv').config();
 
 const { connectDB, pool } = require('./database');
-const { router: loginRouter, verifyJWT, router: verifyTokenRouter } = require('./src/models/login');
+const {
+  router: loginRouter,
+  verifyJWT: originalVerifyJWT,
+  router: verifyTokenRouter
+} = require('./src/models/login');
 const statusRouter = require('./src/models/status');
 const usuarioRoutes = require('./usuarioRoutes');
 const pedidoRoutes = require('./pedidoRoutes');
@@ -18,16 +22,16 @@ const PORT = process.env.PORT || 8080;
 // Conexão com o banco de dados
 connectDB();
 
-// Middleware CORS global com opções
+// CORS manual para garantir funcionamento no Cloud Run
 const corsOptions = {
-  origin: '*', // ou seu domínio específico ex: 'https://sistemaaraleve.shop'
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-  allowedHeaders: 'Content-Type, Authorization, x-access-token',
+  origin: '*', // Ou especifique: ['https://sistemaaraleve.shop']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token'],
   credentials: true,
 };
+
 app.use(cors(corsOptions));
 
-// Middleware manual para garantir CORS nos preflight requests
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
@@ -41,26 +45,30 @@ app.use((req, res, next) => {
   next();
 });
 
-// Trata especificamente os preflight para rotas com verifyJWT
-app.options('/usuarios', cors(corsOptions), (req, res) => res.sendStatus(204));
-app.options('/usuarios/:id', cors(corsOptions), (req, res) => res.sendStatus(204));
-
-// Middlewares globais
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Rotas públicas e protegidas
+// Middleware JWT com exceção para OPTIONS
+function verifyJWT(req, res, next) {
+  if (req.method === "OPTIONS") return next();
+  return originalVerifyJWT(req, res, next);
+}
+
+// Rotas principais
 app.use('/api', usuarioRoutes);
 app.use('/pedidos', pedidoRoutes);
 app.use('/estoque', estoqueRoutes);
 app.use('/api/itens', itemRoutes);
 app.use('/api/estoque', estoqueRoutes);
 
-// Rota protegida para acesso ao sistema
+// Acesso ao sistema (estático) protegido por JWT
 app.use('/sistema', verifyJWT, express.static(path.join(__dirname, 'sistema_aralev-master')));
 
-// Rotas com lógica de usuário
+// Rota OPTIONS explícita para evitar bloqueios
+app.options('/usuarios/:id', cors(corsOptions));
+
+// GET usuários
 app.get("/usuarios", verifyJWT, async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT * FROM tb_usuario");
@@ -71,6 +79,7 @@ app.get("/usuarios", verifyJWT, async (req, res) => {
   }
 });
 
+// POST usuário
 app.post("/usuarios", verifyJWT, async (req, res) => {
   const { nome, login, senha, nivelAcesso } = req.body;
   const Usuario = require('./src/models/usuario');
@@ -87,26 +96,8 @@ app.post("/usuarios", verifyJWT, async (req, res) => {
   res.status(201).json({ sucesso: true, id: resultado.id });
 });
 
-app.delete("/usuarios/:id", verifyJWT, async (req, res) => {
-  const id = req.params.id;
-  const Usuario = require('./src/models/usuario');
-  const user = new Usuario();
-
-  try {
-    const resultado = await user.excluirUsuario(id);
-
-    if (resultado.sucesso) {
-      return res.status(200).json({ sucesso: true, mensagem: "Usuário excluído com sucesso." });
-    } else {
-      return res.status(404).json({ sucesso: false, mensagem: "Usuário não encontrado." });
-    }
-  } catch (erro) {
-    console.error("Erro ao excluir usuário:", erro);
-    return res.status(500).json({ sucesso: false, mensagem: "Erro interno ao excluir o usuário." });
-  }
-});
-
-app.put("/usuarios/:id", verifyJWT, async (req, res) => {
+// PUT usuário
+app.put("/usuarios/:id", cors(corsOptions), verifyJWT, async (req, res) => {
   const id = req.params.id;
   const { nome, login, senha, nivelAcesso } = req.body;
 
@@ -131,6 +122,27 @@ app.put("/usuarios/:id", verifyJWT, async (req, res) => {
   }
 });
 
+// DELETE usuário
+app.delete("/usuarios/:id", verifyJWT, async (req, res) => {
+  const id = req.params.id;
+  const Usuario = require('./src/models/usuario');
+  const user = new Usuario();
+
+  try {
+    const resultado = await user.excluirUsuario(id);
+
+    if (resultado.sucesso) {
+      return res.status(200).json({ sucesso: true, mensagem: "Usuário excluído com sucesso." });
+    } else {
+      return res.status(404).json({ sucesso: false, mensagem: "Usuário não encontrado." });
+    }
+  } catch (erro) {
+    console.error("Erro ao excluir usuário:", erro);
+    return res.status(500).json({ sucesso: false, mensagem: "Erro interno ao excluir o usuário." });
+  }
+});
+
+// DESCRIBE tabela
 app.get("/desc", async (req, res) => {
   try {
     const [rows] = await pool.query("DESCRIBE tb_usuario;");
@@ -146,15 +158,15 @@ app.get("/inicio", verifyJWT, (req, res) => {
   res.redirect("http://127.0.0.1:5500/sistema_aralev-master/inicio.html");
 });
 
-// Autenticação
+// Login/Logout
 app.use('/login', loginRouter);
 app.use('/logout', loginRouter);
 app.use(verifyTokenRouter);
 
-// Status da API
+// Status API
 app.use(statusRouter);
 
-// Inicia o servidor
+// Start server
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT} http://localhost:${PORT}/`);
 });
