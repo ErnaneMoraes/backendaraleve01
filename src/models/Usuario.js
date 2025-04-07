@@ -14,6 +14,7 @@ class Usuario {
         try {
             console.log("Criando usuário com:", nome, login, senha, nivelAcesso);
             const [rows] = await pool.execute('SELECT * FROM tb_usuario WHERE LOGIN = ?', [login]);
+            console.log("Resultado do UPDATE:", resultado);
             if (rows.length > 0) {
                 return { erro: "Login já está em uso" };
             }
@@ -21,6 +22,7 @@ class Usuario {
             const { salt, hash } = hashPassword(senha);
             const query = 'INSERT INTO tb_usuario (NOME, LOGIN, SENHA, SALT, NIVEL_ACESSO) VALUES (?, ?, ?, ?, ?)';
             const [results] = await pool.execute(query, [nome, login, hash, salt, nivelAcesso]);
+            console.log("Resultado do UPDATE:", resultado);
             return { sucesso: true, id: results.insertId };
         } catch (err) {
             return { erro: "Erro ao criar usuário", detalhe: err.message };
@@ -32,6 +34,8 @@ class Usuario {
             console.log("Iniciando exclusão de usuário com ID:", id); // Verifica se o método foi chamado
     
             const [resultado] = await pool.execute("DELETE FROM tb_usuario WHERE ID_USUARIO_PK = ?", [id]);
+            console.log("Resultado do UPDATE:", resultado);
+
     
             console.log("Resultado da query DELETE:", resultado); // Mostra o resultado da execução da query
     
@@ -44,7 +48,7 @@ class Usuario {
             }
         } catch (erro) {
             console.error("Erro ao excluir usuário no banco:", erro);
-            throw erro;
+            throw new Error(`[Model:Usuario] Erro ao atualizar usuário: ${erro.message}`);
         }
     }
 
@@ -63,6 +67,8 @@ class Usuario {
           }
       
           const [resultado] = await pool.execute(query, params);
+          console.log("Resultado do UPDATE:", resultado);
+
       
           if (resultado.affectedRows === 0) {
             return { sucesso: false, mensagem: "Usuário não encontrado." };
@@ -71,7 +77,7 @@ class Usuario {
           return { sucesso: true };
         } catch (erro) {
           console.error("Erro no model ao atualizar:", erro);
-          throw erro;
+          throw new Error(`[Model:Usuario] Erro ao atualizar usuário: ${erro.message}`);
         }
       }      
 }
