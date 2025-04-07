@@ -22,7 +22,7 @@ async function testarUsuario() {
     //console.log('Usuário autenticado?', autenticado ? 'Sim' : 'Não');
 
     // Testar definição de permissões
-    novoUsuario.definirPermissoes();
+    // novoUsuario.definirPermissoes();
 }
 
 testarUsuario();

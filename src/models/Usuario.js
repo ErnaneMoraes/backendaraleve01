@@ -1,5 +1,5 @@
 const { pool } = require('../../database');
-const { hashPassword } = require('./encrypt'); // Corrigido aqui
+const { hashPassword } = require('./encrypt');
 
 class Usuario {
     constructor(idUsuario, nome, login, senha, nivelAcesso) {
@@ -10,64 +10,72 @@ class Usuario {
         this.nivelAcesso = nivelAcesso;
     }
 
-    static validarLoginExistente(login, listaUsuarios) {
-        const loginExistente = listaUsuarios.some(usuario => usuario.login === login);
-        if (loginExistente) {
-            this.exibirAlerta(`O login "${login}" já está em uso. Por favor, escolha outro login.`);
-        }
-        return loginExistente;
-    }
-
-    static exibirAlerta(mensagem) {
-        console.warn('ALERTA:', mensagem);
-    }
-
     async criarUsuario(nome, login, senha, nivelAcesso) {
         try {
-            // Verifica se o login já existe no banco de dados
+            console.log("Criando usuário com:", nome, login, senha, nivelAcesso);
             const [rows] = await pool.execute('SELECT * FROM tb_usuario WHERE LOGIN = ?', [login]);
             if (rows.length > 0) {
-                console.log('ALERTA: O login já está em uso.');
-                return;
+                return { erro: "Login já está em uso" };
             }
 
-            // Gera o hash da senha usando a função hashPassword do encrypt.js
             const { salt, hash } = hashPassword(senha);
-
-            // Insere o novo usuário no banco de dados com a senha criptografada
             const query = 'INSERT INTO tb_usuario (NOME, LOGIN, SENHA, SALT, NIVEL_ACESSO) VALUES (?, ?, ?, ?, ?)';
             const [results] = await pool.execute(query, [nome, login, hash, salt, nivelAcesso]);
-            console.log('Usuário registrado com sucesso! ID:', results.insertId);
+            return { sucesso: true, id: results.insertId };
         } catch (err) {
-            console.error('Erro ao criar usuário:', err);
+            return { erro: "Erro ao criar usuário", detalhe: err.message };
         }
     }
 
-    autenticarUsuario(login, senha) {
-        if (this.login === login && this.senha === senha) {
-            console.log('Usuário autenticado com sucesso!');
-            return true;
-        } else {
-            console.log('Login ou senha incorretos.');
-            return false;
+    async excluirUsuario(id) {
+        try {
+            console.log("Iniciando exclusão de usuário com ID:", id); // Verifica se o método foi chamado
+    
+            const [resultado] = await pool.execute("DELETE FROM tb_usuario WHERE ID_USUARIO_PK = ?", [id]);
+    
+            console.log("Resultado da query DELETE:", resultado); // Mostra o resultado da execução da query
+    
+            if (resultado.affectedRows > 0) {
+                console.log("Usuário excluído com sucesso!");
+                return { sucesso: true };
+            } else {
+                console.log("Nenhum usuário encontrado com esse ID.");
+                return { sucesso: false };
+            }
+        } catch (erro) {
+            console.error("Erro ao excluir usuário no banco:", erro);
+            throw erro;
         }
     }
 
-    definirPermissoes() {
-        switch (this.nivelAcesso) {
-            case '1':
-                console.log('Permissões de administrador: Acesso total ao sistema.');
-                break;
-            case '2':
-                console.log('Permissões de editor: Pode editar conteúdo, mas não pode administrar usuários.');
-                break;
-            case '3':
-                console.log('Permissões de visitante: Apenas leitura.');
-                break;
-            default:
-                console.log('Nível de acesso desconhecido. Permissões não definidas.');
+    async atualizarUsuario(id, dados) {
+        try {
+          let query = '';
+          let params = [];
+      
+          if (dados.senha) {
+            const { salt, hash } = hashPassword(dados.senha);
+            query = `UPDATE tb_usuario SET NOME = ?, LOGIN = ?, SENHA = ?, SALT = ?, NIVEL_ACESSO = ? WHERE ID_USUARIO_PK = ?`;
+            params = [dados.nome, dados.login, hash, salt, dados.nivelAcesso, id];
+          } else {
+            query = `UPDATE tb_usuario SET NOME = ?, LOGIN = ?, NIVEL_ACESSO = ? WHERE ID_USUARIO_PK = ?`;
+            params = [dados.nome, dados.login, dados.nivelAcesso, id];
+          }
+      
+          const [resultado] = await pool.execute(query, params);
+      
+          if (resultado.affectedRows === 0) {
+            return { sucesso: false, mensagem: "Usuário não encontrado." };
+          }
+      
+          return { sucesso: true };
+        } catch (erro) {
+          console.error("Erro no model ao atualizar:", erro);
+          throw erro;
         }
-    }
+      }      
 }
+
+
 
 module.exports = Usuario;

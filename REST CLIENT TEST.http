@@ -1,0 +1,24 @@
+### Teste de Login
+POST http://localhost:8080/login
+Content-Type: application/json
+
+{
+    "login": "ernane",
+    "senha": "Unileste"
+}
+
+### GET USUÁRIOS - Listar usuários (requer token)
+DELETE http://localhost:8080/usuarios/71
+Content-Type: application/json
+x-access-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6MSwiaWF0IjoxNzQzOTg4ODU3LCJleHAiOjE3NDQwMzIwNTd9.s1CYpKE79tFi2-68AIkBfAOefTj-0BU7-Sc4OuM9nNo
+
+### PUT USUÁRIOS - Altera usuários (requer token)
+PUT http://localhost:8080/usuarios/77
+Content-Type: application/json
+x-access-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6MSwiaWF0IjoxNzQ0MDMxMzkyLCJleHAiOjE3NDQwNzQ1OTJ9.I9g2WxfCRHrr-KyCYMh7NXAK2XQLkg7GFURIv8YiNsI
+
+{
+  "nome": "Novo Nome",
+  "login": "novologin",
+  "nivelAcesso": 3
+}

@@ -1,8 +1,46 @@
-### Teste de Login
-POST http://localhost:8080/login
+@base_url = http://localhost:8080
+@token = COLE_SEU_TOKEN_AQUI
+
+### LOGIN - obter token JWT
+POST {{base_url}}/login
 Content-Type: application/json
 
 {
-    "login": "arroba",
-    "senha": "Unileste"
+  "login": "maria.lucia",
+  "senha": "Unileste"
 }
+
+### GET USUÁRIOS - Listar usuários (requer token)
+GET http://localhost:8080/usuarios
+Content-Type: application/json
+x-access-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6MSwiaWF0IjoxNzQzODkzNjEwLCJleHAiOjE3NDM4OTcyMTB9.FQWYrnUlDvIXALAPpBtPNhPWWuFb5hWl72k6XMSLqBc
+
+DELETE http://localhost:3000/usuarios/1
+Authorization: Bearer SEU_TOKEN_AQUI
+
+
+### POST USUÁRIO - Criar novo usuário (requer token)
+POST {{base_url}}/usuarios
+Content-Type: application/json
+x-access-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6MSwiaWF0IjoxNzQzODkzNjEwLCJleHAiOjE3NDM4OTcyMTB9.FQWYrnUlDvIXALAPpBtPNhPWWuFb5hWl72k6XMSLqBc
+
+{
+  "nome": "Maria Lucia",
+  "login": "maria.lucia",
+  "senha": "Unileste",
+  "nivelAcesso": "1"
+}
+
+### GET DESCRIÇÃO DA TABELA
+GET {{base_url}}/desc
+
+### ROTA INICIAL - Redirecionamento (requer token)
+GET {{base_url}}/inicio
+Authorization: Bearer {{token}}
+
+### GET PEDIDOS (exemplo - se exigir token, adicione Authorization)
+GET {{base_url}}/pedidos
+Authorization: Bearer {{token}}
+
+### GET STATUS (se tiver essa rota)
+GET {{base_url}}/status
