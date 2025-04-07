@@ -18,14 +18,22 @@ const PORT = process.env.PORT || 8080;
 // Conexão com o banco de dados
 connectDB();
 
-// Middleware CORS manual (reforçado para Cloud Run)
+// Middleware CORS global com opções
+const corsOptions = {
+  origin: '*', // ou seu domínio específico ex: 'https://sistemaaraleve.shop'
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  allowedHeaders: 'Content-Type, Authorization, x-access-token',
+  credentials: true,
+};
+app.use(cors(corsOptions));
+
+// Middleware manual para garantir CORS nos preflight requests
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*"); // OU seu domínio exato
+  res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-access-token");
   res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  // Trata requisição preflight diretamente
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
   }
@@ -33,22 +41,26 @@ app.use((req, res, next) => {
   next();
 });
 
+// Trata especificamente os preflight para rotas com verifyJWT
+app.options('/usuarios', cors(corsOptions), (req, res) => res.sendStatus(204));
+app.options('/usuarios/:id', cors(corsOptions), (req, res) => res.sendStatus(204));
+
 // Middlewares globais
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Rotas protegidas e públicas
+// Rotas públicas e protegidas
 app.use('/api', usuarioRoutes);
 app.use('/pedidos', pedidoRoutes);
 app.use('/estoque', estoqueRoutes);
 app.use('/api/itens', itemRoutes);
 app.use('/api/estoque', estoqueRoutes);
 
-// Rota protegida para o sistema (acesso a arquivos estáticos)
+// Rota protegida para acesso ao sistema
 app.use('/sistema', verifyJWT, express.static(path.join(__dirname, 'sistema_aralev-master')));
 
-// Rotas diretas
+// Rotas com lógica de usuário
 app.get("/usuarios", verifyJWT, async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT * FROM tb_usuario");
