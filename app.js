@@ -18,6 +18,13 @@ const PORT = process.env.PORT || 8080;
 // Conexão com o banco de dados
 connectDB();
 
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*"); // ou "https://sistemaaraleve.shop"
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-access-token");
+  next();
+});
+
 // CORS — configuração única e correta
 app.use(cors({
   origin: '*',

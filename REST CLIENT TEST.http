@@ -15,7 +15,7 @@ x-access-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6MSwiaWF0IjoxNzQ
 ### PUT USUÁRIOS - Altera usuários (requer token)
 PUT http://localhost:8080/usuarios/77
 Content-Type: application/json
-x-access-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6MSwiaWF0IjoxNzQ0MDQ2NDE5LCJleHAiOjE3NDQwODk2MTl9.9PoK3cyAxBs9l3u1zpcnE2dlXEi9MEHQPTz3sT57_Zs
+x-access-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6MSwiaWF0IjoxNzQ0MDQ3Nzg4LCJleHAiOjE3NDQwOTA5ODh9.BCUXAK-PCfGz-6ff8zh2xaTxIq6gvR2ai3BLQPYvcmc
 
 {
   "nome": "Ernane",
