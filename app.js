@@ -15,6 +15,8 @@ const usuarioRoutes = require('./usuarioRoutes');
 const pedidoRoutes = require('./pedidoRoutes');
 const estoqueRoutes = require('./estoqueRoutes');
 const itemRoutes = require('./itemRoutes');
+const pessoaRoutes = require('./pessoaRoutes');
+
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -61,10 +63,10 @@ function verifyJWT(req, res, next) {
 
 // Rotas principais
 app.use('/api', usuarioRoutes);
-app.use('/pedidos', pedidoRoutes);
-app.use('/estoque', estoqueRoutes);
+app.use('/api/pedidos', pedidoRoutes);
 app.use('/api/itens', itemRoutes);
 app.use('/api/estoque', estoqueRoutes);
+app.use('/api/pessoas', pessoaRoutes);
 
 // Acesso ao sistema (estático) protegido por JWT
 app.use('/sistema', verifyJWT, express.static(path.join(__dirname, 'sistema_aralev-master')));
@@ -184,4 +186,15 @@ app.use(statusRouter);
 // Start server
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT} http://localhost:${PORT}/`);
+});
+
+// Rota de teste
+app.get('/', (req, res) => {
+    res.send('API de Pessoas está funcionando!');
+});
+
+// Tratamento de erros
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ erro: 'Erro interno no servidor' });
 });

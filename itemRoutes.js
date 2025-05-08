@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Item = require('./src/models/Item'); 
-const pool = require('./database'); 
+const { pool } = require('./database'); // Importação correta
 
 // Middleware de validação para Item
 const validarItem = (req, res, next) => {

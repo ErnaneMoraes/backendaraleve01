@@ -11,17 +11,16 @@ class Item {
         tag = '',
         medida = 'un'
     ) {
-        this.idProduto = idProduto;
-        this.nome = nome;
-        this.quantidade = quantidade;
-        this.precoCusto = precoCusto;
-        this.precoVenda = precoVenda;
-        this.descricao = descricao;
-        this.tag = tag;
-        this.medida = medida;
+        this.idProduto = Number(idProduto) || null;
+        this.nome = String(nome);
+        this.quantidade = Number(quantidade) || 0;
+        this.precoCusto = Number(precoCusto) || 0;
+        this.precoVenda = Number(precoVenda) || 0;
+        this.descricao = String(descricao || '');
+        this.tag = String(tag || '');
+        this.medida = String(medida || 'un');
     }
 
-    // Métodos da classe
     atualizarQuantidade(novaQuantidade) {
         if (novaQuantidade >= 0) {
             this.quantidade = novaQuantidade;
@@ -34,12 +33,17 @@ class Item {
         return this.quantidade * this.precoCusto;
     }
 
+    calcularMargemLucro() {
+        if (this.precoCusto === 0) return 0;
+        return ((this.precoVenda - this.precoCusto) / this.precoCusto) * 100;
+    }
+
     async salvar() {
         const connection = await pool.getConnection();
         try {
             const query = `
                 INSERT INTO tb_produto (
-                    NOME, QUANTIDADE, PRECOCUSTO, PRECOVENDA, 
+                    NOME, quantidade, precoCusto, precoVenda, 
                     DESCRICAO, TAG, MEDIDA
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
@@ -77,9 +81,9 @@ class Item {
             return new Item(
                 itemData.ID_PRODUTO_PK,
                 itemData.NOME,
-                itemData.QUANTIDADE,
-                itemData.PRECOCUSTO,
-                itemData.PRECOVENDA,
+                itemData.quantidade,
+                itemData.precoCusto,
+                itemData.precoVenda,
                 itemData.DESCRICAO,
                 itemData.TAG,
                 itemData.MEDIDA
@@ -102,9 +106,9 @@ class Item {
             return rows.map(row => new Item(
                 row.ID_PRODUTO_PK,
                 row.NOME,
-                row.QUANTIDADE,
-                row.PRECOCUSTO,
-                row.PRECOVENDA,
+                row.quantidade,
+                row.precoCusto,
+                row.precoVenda,
                 row.DESCRICAO,
                 row.TAG,
                 row.MEDIDA
@@ -127,9 +131,9 @@ class Item {
             const query = `
                 UPDATE tb_produto SET
                     NOME = ?,
-                    QUANTIDADE = ?,
-                    PRECOCUSTO = ?,
-                    PRECOVENDA = ?,
+                    quantidade = ?,
+                    precoCusto = ?,
+                    precoVenda = ?,
                     DESCRICAO = ?,
                     TAG = ?,
                     MEDIDA = ?

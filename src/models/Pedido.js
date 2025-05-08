@@ -1,23 +1,28 @@
+const { pool } = require('../../database');
+
 class Pedido {
-    constructor(cliente, dataPedido, status, listaItens) {
+    constructor(connection, idPessoa, dataPedido, status, itens, formaPgto, parcelas) {
+        this.connection = connection;
         this.idPessoa = idPessoa;
-        this.dataPedido = dataPedido;
+        this.dataPedido = dataPedido || new Date();
         this.status = status;
-        this.listaItens = listaItens;
-        this.dataPedido = new Date();
+        this.itens = itens;
         this.formaPgto = formaPgto;
         this.parcelas = parcelas;
     }
 
-
     async registrarPedido() {
-        const connection = await pool.getConnection();
         try {
-            await connection.beginTransaction();
+            await this.connection.beginTransaction();
 
             const subtotal = this.itens.reduce((sum, item) => sum + (item.quantidade * item.precoUnitario), 0);
-            const queryPedido = `
-                INSERT INTO tb_pedido (
+            const produto = this.itens[0];
+            const vencimento = new Date();
+            vencimento.setDate(vencimento.getDate() + 7);
+            const total = subtotal;
+
+            const [resultPedido] = await this.connection.execute(
+                `INSERT INTO tb_pedido (
                     ID_PRODUTO_FK, 
                     ID_PESSOA_FK, 
                     QUANTIDADE, 
@@ -26,89 +31,90 @@ class Pedido {
                     PARCELAS, 
                     VENCIMENTO, 
                     TOTAL
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-
-            const produtoPrincipal = this.itens[0];
-
-            const vencimento = new Date();
-            vencimento.setDate(vencimento.getDate() + 7);
-
-            const [resultPedido] = await connection.execute(queryPedido, [
-                produtoPrincipal.idProduto,
-                this.idPessoa,
-                produtoPrincipal.quantidade,
-                subtotal,
-                this.formaPgto,
-                this.parcelas,
-                vencimento.toISOString().split('T')[0],
-                total
-            ]);
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    produto.idProduto,
+                    this.idPessoa,
+                    produto.quantidade,
+                    subtotal,
+                    this.formaPgto,
+                    this.parcelas,
+                    vencimento.toISOString().split('T')[0],
+                    total
+                ]
+            );
 
             const idPedido = resultPedido.insertId;
 
-            const queryHistorico = `
-                INSERT INTO tb_hist_pedido (
-                    ID_PEDIDO_FK,
-                    DATA,
-                    STATUS
-                ) VALUES (?, ?, ?)`;
+            await this.connection.execute(
+                `INSERT INTO tb_hist_pedido (
+                    ID_PEDIDO_FK, DATA, STATUS
+                ) VALUES (?, ?, ?)`,
+                [idPedido, new Date().toISOString().split('T')[0], this.status]
+            );
 
-            await connection.execute(queryHistorico, [
-                idPedido,
-                new Date().toISOString().split('T')[0],
-                this.status
-            ]);
+            await this.connection.execute(
+                `UPDATE tb_produto 
+                 SET QUANTIDADE_ESTOQUE = QUANTIDADE_ESTOQUE - ? 
+                 WHERE ID_PRODUTO_PK = ?`,
+                [produto.quantidade, produto.idProduto]
+            );
 
-            await connection.commit();
-            console.log(`Pedido ${idPedido} registrado com sucesso!`);
+            await this.connection.commit();
             return idPedido;
 
         } catch (err) {
-            await connection.rollback();
+            await this.connection.rollback();
             console.error('Erro ao registrar pedido:', err);
             throw err;
-        } finally {
-            connection.release();
         }
     }
 
     async atualizarStatus(idPedido, novoStatus) {
-        const connection = await pool.getConnection();
         try {
-            await connection.beginTransaction();
+            await this.connection.beginTransaction();
 
             this.status = novoStatus;
 
-            const query = `
-                INSERT INTO tb_hist_pedido (
-                    ID_PEDIDO_FK,
-                    DATA,
-                    STATUS
-                ) VALUES (?, ?, ?)`;
+            await this.connection.execute(
+                `INSERT INTO tb_hist_pedido (
+                    ID_PEDIDO_FK, DATA, STATUS
+                ) VALUES (?, ?, ?)`,
+                [idPedido, new Date().toISOString().split('T')[0], novoStatus]
+            );
 
-            await connection.execute(query, [
-                idPedido,
-                new Date().toISOString().split('T')[0],
-                novoStatus
-            ]);
+            if (novoStatus.toLowerCase() === 'cancelado') {
+                const [pedido] = await this.connection.execute(
+                    `SELECT ID_PRODUTO_FK, QUANTIDADE 
+                     FROM tb_pedido 
+                     WHERE ID_PEDIDO_PK = ?`,
+                    [idPedido]
+                );
 
-            await connection.commit();
-            console.log(`Status do pedido ${idPedido} atualizado para: ${novoStatus}`);
+                if (pedido.length > 0) {
+                    const { ID_PRODUTO_FK, QUANTIDADE } = pedido[0];
+                    await this.connection.execute(
+                        `UPDATE tb_produto 
+                         SET QUANTIDADE_ESTOQUE = QUANTIDADE_ESTOQUE + ? 
+                         WHERE ID_PRODUTO_PK = ?`,
+                        [QUANTIDADE, ID_PRODUTO_FK]
+                    );
+                }
+            }
+
+            await this.connection.commit();
             return true;
 
         } catch (err) {
-            await connection.rollback();
+            await this.connection.rollback();
             console.error('Erro ao atualizar status:', err);
             throw err;
-        } finally {
-            connection.release();
         }
     }
 
     async consultarPedido(idPedido) {
-        const connection = await pool.getConnection();
         try {
-            const [pedido] = await connection.execute(
+            const [pedido] = await this.connection.execute(
                 `SELECT * FROM tb_pedido WHERE ID_PEDIDO_PK = ?`,
                 [idPedido]
             );
@@ -117,7 +123,7 @@ class Pedido {
                 throw new Error('Pedido não encontrado');
             }
 
-            const [historico] = await connection.execute(
+            const [historico] = await this.connection.execute(
                 `SELECT * FROM tb_hist_pedido 
                  WHERE ID_PEDIDO_FK = ? 
                  ORDER BY DATA DESC`,
@@ -132,15 +138,12 @@ class Pedido {
         } catch (err) {
             console.error('Erro ao consultar pedido:', err);
             throw err;
-        } finally {
-            connection.release();
         }
     }
 
     async atualizarPedido(idPedido, novosDados) {
-        const connection = await pool.getConnection();
         try {
-            await connection.beginTransaction();
+            await this.connection.beginTransaction();
 
             const campos = [];
             const valores = [];
@@ -155,42 +158,37 @@ class Pedido {
             if (campos.length > 0) {
                 const query = `UPDATE tb_pedido SET ${campos.join(', ')} WHERE ID_PEDIDO_PK = ?`;
                 valores.push(idPedido);
-
-                await connection.execute(query, valores);
+                await this.connection.execute(query, valores);
             }
 
             if (novosDados.status) {
-                await connection.execute(
+                await this.connection.execute(
                     `INSERT INTO tb_hist_pedido (ID_PEDIDO_FK, DATA, STATUS) 
                      VALUES (?, ?, ?)`,
                     [idPedido, new Date().toISOString().split('T')[0], novosDados.status]
                 );
             }
 
-            await connection.commit();
-            console.log(`Pedido ${idPedido} atualizado com sucesso`);
+            await this.connection.commit();
             return true;
 
         } catch (err) {
-            await connection.rollback();
+            await this.connection.rollback();
             console.error('Erro ao atualizar pedido:', err);
             throw err;
-        } finally {
-            connection.release();
         }
     }
 
     async deletarPedido(idPedido) {
-        const connection = await pool.getConnection();
         try {
-            await connection.beginTransaction();
+            await this.connection.beginTransaction();
 
-            await connection.execute(
+            await this.connection.execute(
                 `DELETE FROM tb_hist_pedido WHERE ID_PEDIDO_FK = ?`,
                 [idPedido]
             );
 
-            const [result] = await connection.execute(
+            const [result] = await this.connection.execute(
                 `DELETE FROM tb_pedido WHERE ID_PEDIDO_PK = ?`,
                 [idPedido]
             );
@@ -199,16 +197,13 @@ class Pedido {
                 throw new Error('Pedido não encontrado');
             }
 
-            await connection.commit();
-            console.log(`Pedido ${idPedido} deletado com sucesso`);
+            await this.connection.commit();
             return true;
 
         } catch (err) {
-            await connection.rollback();
+            await this.connection.rollback();
             console.error('Erro ao deletar pedido:', err);
             throw err;
-        } finally {
-            connection.release();
         }
     }
 }
